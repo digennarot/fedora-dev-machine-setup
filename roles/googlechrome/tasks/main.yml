@@ -1,0 +1,7 @@
+---
+
+- name: install latest google chrome
+  ansible.builtin.dnf:
+    name: chromium
+
+...

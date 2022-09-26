@@ -1,0 +1,134 @@
+---
+- name: add dnf docker
+  ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+  become: yes
+
+- name: tune system swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: '0'
+    state: present
+
+- name: install archiving tools
+  ansible.builtin.dnf:
+    name: "{{ base_archiving_tools }}"
+    state: present
+
+- name: install productivity tools
+  ansible.builtin.dnf:
+    name: "{{ base_productivity_tools }}"
+    state: present
+
+- name: install developer tools
+  ansible.builtin.dnf:
+    name: "{{ base_developer_tools }}"
+    state: present
+
+- name: install developer tools pip3 packages
+  ansible.builtin.pip:
+    name: "{{ base_developer_tools_pip3 }}"
+    executable: pip3
+
+- name: set nc to point to nmap's netcat implementation
+  community.general.alternatives:
+    name: nc
+    path: /usr/bin/ncat
+
+- name: create .ssh dir
+  ansible.builtin.file:
+    path: "~{{ local_username }}/.ssh"
+    state: directory
+    mode: '0700'
+  become: yes
+  become_user: "{{ local_username }}"
+
+- block:
+    - name: Create directories for golang
+      ansible.builtin.file:
+        path: "~{{ local_username }}/{{ item }}"
+        state: directory
+      with_items:
+        - go
+        - go/src
+        - go/bin
+
+    - name: Make GOPATH available in .bashrc
+      ansible.builtin.lineinfile:
+        path: "~{{ local_username }}/.bashrc"
+        line: "{{ item }}"
+        create: yes
+      with_items:
+        - export GOPATH=$HOME/go
+        - export PATH=$PATH:$GOPATH/bin
+  become: yes
+  become_user: "{{ local_username }}"
+
+- name: install download tools
+  ansible.builtin.dnf:
+    name: "{{ base_download_tools }}"
+    state: present
+
+- name: install media packages
+  ansible.builtin.dnf:
+    name: "{{ base_media_tools }}"
+    state: present
+
+- name: install virtualization tools
+  ansible.builtin.dnf:
+    name: "{{ base_virtualization_tools }}"
+    state: present
+
+# add user to docker group to run docker commands without sudo
+# add user to vboxusers group so that user can attach usb devices to guest OS
+- name: add user to docker and vboxusers groups
+  ansible.builtin.user:
+    name: "{{ local_username }}"
+    append: yes
+    groups:
+      - docker
+
+#- name: install virtualbox extensions pack
+#  ansible.builtin.shell: echo 'y' | vboxmanage extpack install --replace /usr/share/virtualbox-ext-pack/Oracle*
+
+- name: Enable permanent night light settings
+  ansible.builtin.command: "gsettings set org.gnome.settings-daemon.plugins.color {{ item.key }} {{ item.value }}"
+  loop:
+    - { key: 'night-light-enabled', value: "{{ base_permanent_night_light.night_light_enabled | string | lower }}" }
+    - { key: 'night-light-schedule-automatic', value: "{{ base_permanent_night_light.night_light_schedule_automatic | string | lower }}" }
+    - { key: 'night-light-schedule-from', value: "{{ base_permanent_night_light.night_light_schedule_from }}" }
+    - { key: 'night-light-schedule-to', value: "{{ base_permanent_night_light.night_light_schedule_to }}" }
+    - { key: 'night-light-temperature', value: "{{ base_permanent_night_light.night_light_temperature }}" }
+
+  when: base_permanent_night_light.night_light_enabled
+  become: yes
+  become_user: "{{ local_username }}"
+
+# make fstrim run daily rather than the default weekly schedule for SSD longevity
+- block:
+    - name: enable fstrim.timer
+      ansible.builtin.systemd:
+        name: fstrim.timer
+        state: started
+        enabled: yes
+
+    - name: create systemd fstrim.timer override dir
+      ansible.builtin.file:
+        path: /etc/systemd/system/fstrim.timer.d
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: create override.conf file for fstrim.timer
+      ansible.builtin.copy:
+        src: etc/systemd/system/fstrim.timer.d/override.conf
+        dest: /etc/systemd/system/fstrim.timer.d/override.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: force systemd to reread configs
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+...

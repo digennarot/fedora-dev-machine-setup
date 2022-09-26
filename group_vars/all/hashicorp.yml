@@ -1,0 +1,26 @@
+---
+
+_hashicorp_repository_url:
+  Fedora: "https://rpm.releases.hashicorp.com/fedora/hashicorp.repo"
+
+hashicorp_repository_url: "{{ _hashicorp_repository_url[ansible_distribution] | default(_hashicorp_repository_url[ansible_os_family] | default(_hashicorp_repository_url['default'] )) }}"
+
+_hashicorp_architecture_mapping:
+  x86_64: amd64
+
+hashicorp_architecture_mapping: "{{ _hashicorp_architecture_mapping[ansible_architecture] }}"
+
+_hashicorp_src:
+  oss: "https://releases.hashicorp.com/{{ item.name }}/{{ item.version }}/{{ item.name }}_{{ item.version }}_linux_{{ hashicorp_architecture_mapping }}.zip"
+
+hashicorp_src: "{{ _hashicorp_src[item.type] | default(_hashicorp_src['oss'] ) }}"
+
+# You can install hashicorp products using this list.
+hashicorp_products:
+  - name: consul
+  - name: consul-template
+#  - name: nomad
+  - name: packer
+  - name: terraform
+#  - name: vagrant
+  - name: vault
