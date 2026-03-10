@@ -1,7 +1,3 @@
 ---
-
-googlechrome_repo: "deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main"
-googlechrome_apt_key_url: "https://dl.google.com/linux/linux_signing_key.pub"
-googlechrome_apt_key_keyring: "/etc/apt/trusted.gpg.d/google.gpg"
-
+# Chromium is installed directly from the Fedora dnf repos; no extra repo configuration needed.
 ...

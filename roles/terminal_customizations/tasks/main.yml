@@ -1,29 +1,35 @@
 ---
-
 - block:
     - name: create local fonts directory
       ansible.builtin.file:
         path: "~{{ local_username }}/.local/share/fonts"
         state: directory
+        mode: '0755'
   become: yes
   become_user: "{{ local_username }}"
 
 - block:
-    - name: download nerd fonts to local fonts folder
-      ansible.builtin.get_url:
-        url: "{{ item  }}"
+    # download and extract nerd font zip archives from GitHub releases (v3+ structure)
+    - name: download and install nerd fonts from releases
+      ansible.builtin.unarchive:
+        src: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ terminal_customizations_nerd_fonts_version }}/{{ item }}.zip"
         dest: "~{{ local_username }}/.local/share/fonts/"
-      with_items: "{{ terminal_customizations_nerd_fonts }}"
+        remote_src: yes
+        exclude:
+          - LICENSE
+          - readme.md
+      loop: "{{ terminal_customizations_nerd_fonts }}"
   become: yes
   become_user: "{{ local_username }}"
 
 - name: refresh fonts cache
-  ansible.builtin.shell: "fc-cache -fv"
+  ansible.builtin.command: fc-cache -fv
   become: yes
   become_user: "{{ local_username }}"
+  changed_when: false
 
 # fix for https://github.com/gnunn1/tilix/wiki/VTE-Configuration-Issue using option 2
-# also, set font to SourceCodePro+Powerline+Awesome Regular for tmux powerline
+# also, set font to FiraCode Nerd Font Mono for tilix
 - block:
     - name: copy tilix config template
       ansible.builtin.copy:
@@ -35,7 +41,7 @@
       ansible.builtin.shell: dconf load /com/gexperts/Tilix/ < /tmp/tilix.dconf
       ignore_errors: yes
   become: yes
-  become_user: "{{ local_username  }}"
+  become_user: "{{ local_username }}"
 
 # sample .tmux.conf file ready to use
 - block:
