@@ -1,4 +1,9 @@
 ---
+- name: install vim packages
+  ansible.builtin.dnf:
+    name: "{{ vim_packages }}"
+    state: present
+  become: yes
 
 - block:
     - name: clone amix vimrc git repo

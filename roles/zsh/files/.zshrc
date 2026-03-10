@@ -109,7 +109,7 @@ function start_agent {
 # Source SSH settings, if applicable
 if [ -f "${SSH_ENV}" ]; then
      source "${SSH_ENV}" > /dev/null
-     #ps ${SSH_AGENT_PID} doesn't work under cywgin
+     #ps ${SSH_AGENT_PID} doesn't work under cygwin
      ps -ef | grep ${SSH_AGENT_PID} | grep ssh-agent$ > /dev/null || {
           start_agent;
      }
@@ -133,6 +133,6 @@ export VAGRANT_DEFAULT_PROVIDER='virtualbox'
 [ -f ~/.shell_functions  ] && source ~/.shell_functions
 [ -f ~/.shell_variables ] && source ~/.shell_variables
 
-# enable fzf fuzzy finder completions in the terminal
-[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && source /usr/share/doc/fzf/examples/key-bindings.zsh    #fzf
-[ -f /usr/share/doc/fzf/examples/completion.zsh ] && source /usr/share/doc/fzf/examples/completion.zsh        #fzf
+# enable fzf fuzzy finder completions in the terminal (Fedora path)
+[ -f /usr/share/fzf/shell/key-bindings.zsh ] && source /usr/share/fzf/shell/key-bindings.zsh    #fzf
+[ -f /usr/share/fzf/shell/completion.zsh ] && source /usr/share/fzf/shell/completion.zsh        #fzf

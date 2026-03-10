@@ -1,6 +1,9 @@
 ---
-- name: add dnf docker
-  ansible.builtin.command: dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+- name: add docker ce repository
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/fedora/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
   become: yes
 
 - name: tune system swappiness
@@ -18,6 +21,17 @@
   ansible.builtin.dnf:
     name: "{{ base_productivity_tools }}"
     state: present
+
+- name: install system tools
+  ansible.builtin.dnf:
+    name: "{{ base_system_tools }}"
+    state: present
+
+- name: install laptop power tools
+  ansible.builtin.dnf:
+    name: "{{ base_system_tools_laptop }}"
+    state: present
+  when: laptop_mode | bool
 
 - name: install developer tools
   ansible.builtin.dnf:
@@ -43,21 +57,21 @@
   become_user: "{{ local_username }}"
 
 - block:
-    - name: Create directories for golang
+    - name: create directories for golang
       ansible.builtin.file:
         path: "~{{ local_username }}/{{ item }}"
         state: directory
-      with_items:
+      loop:
         - go
         - go/src
         - go/bin
 
-    - name: Make GOPATH available in .bashrc
+    - name: make GOPATH available in .bashrc
       ansible.builtin.lineinfile:
         path: "~{{ local_username }}/.bashrc"
         line: "{{ item }}"
         create: yes
-      with_items:
+      loop:
         - export GOPATH=$HOME/go
         - export PATH=$PATH:$GOPATH/bin
   become: yes
@@ -78,19 +92,25 @@
     name: "{{ base_virtualization_tools }}"
     state: present
 
+- name: install privacy packages
+  ansible.builtin.dnf:
+    name: "{{ privacy_packages }}"
+    state: present
+
+- name: install security packages
+  ansible.builtin.dnf:
+    name: "{{ security_packages }}"
+    state: present
+
 # add user to docker group to run docker commands without sudo
-# add user to vboxusers group so that user can attach usb devices to guest OS
-- name: add user to docker and vboxusers groups
+- name: add user to docker group
   ansible.builtin.user:
     name: "{{ local_username }}"
     append: yes
     groups:
       - docker
 
-#- name: install virtualbox extensions pack
-#  ansible.builtin.shell: echo 'y' | vboxmanage extpack install --replace /usr/share/virtualbox-ext-pack/Oracle*
-
-- name: Enable permanent night light settings
+- name: enable permanent night light settings
   ansible.builtin.command: "gsettings set org.gnome.settings-daemon.plugins.color {{ item.key }} {{ item.value }}"
   loop:
     - { key: 'night-light-enabled', value: "{{ base_permanent_night_light.night_light_enabled | string | lower }}" }
@@ -98,7 +118,6 @@
     - { key: 'night-light-schedule-from', value: "{{ base_permanent_night_light.night_light_schedule_from }}" }
     - { key: 'night-light-schedule-to', value: "{{ base_permanent_night_light.night_light_schedule_to }}" }
     - { key: 'night-light-temperature', value: "{{ base_permanent_night_light.night_light_temperature }}" }
-
   when: base_permanent_night_light.night_light_enabled
   become: yes
   become_user: "{{ local_username }}"
@@ -117,7 +136,7 @@
         state: directory
         owner: root
         group: root
-        mode: 0755
+        mode: '0755'
 
     - name: create override.conf file for fstrim.timer
       ansible.builtin.copy:
@@ -125,7 +144,7 @@
         dest: /etc/systemd/system/fstrim.timer.d/override.conf
         owner: root
         group: root
-        mode: 0644
+        mode: '0644'
 
     - name: force systemd to reread configs
       ansible.builtin.systemd:
