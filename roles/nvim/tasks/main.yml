@@ -1,0 +1,52 @@
+---
+- name: install neovim packages
+  ansible.builtin.dnf:
+    name: "{{ nvim_packages }}"
+    state: present
+  become: yes
+
+- block:
+    - name: create nvim config directories
+      ansible.builtin.file:
+        path: "~{{ local_username }}/.config/nvim/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - ""
+        - lua
+        - lua/config
+        - after
+        - after/plugin
+
+    - name: check if nvim init.lua already exists
+      ansible.builtin.stat:
+        path: "~{{ local_username }}/.config/nvim/init.lua"
+      register: nvim_init
+
+    - name: backup existing nvim config
+      ansible.builtin.copy:
+        src: "~{{ local_username }}/.config/nvim/"
+        dest: "~{{ local_username }}/.config/nvim.orig/"
+      when: nvim_init.stat.exists
+
+    - name: copy nvim config files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "~{{ local_username }}/.config/nvim/{{ item.dest }}"
+        mode: '0644'
+        force: yes
+      loop:
+        - { src: init.lua,                     dest: init.lua }
+        - { src: lua/manage.lua,               dest: lua/manage.lua }
+        - { src: lua/plugin-list.lua,          dest: lua/plugin-list.lua }
+        - { src: lua/config/options.lua,       dest: lua/config/options.lua }
+        - { src: lua/config/keybinds.lua,      dest: lua/config/keybinds.lua }
+        - { src: after/plugin/ui.lua,          dest: after/plugin/ui.lua }
+        - { src: after/plugin/treesitter.lua,  dest: after/plugin/treesitter.lua }
+        - { src: after/plugin/navigation.lua,  dest: after/plugin/navigation.lua }
+        - { src: after/plugin/editing.lua,     dest: after/plugin/editing.lua }
+
+  become: yes
+  become_user: "{{ local_username }}"
+
+...

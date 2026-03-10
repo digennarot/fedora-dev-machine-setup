@@ -22,6 +22,7 @@ fedora-dev-machine-setup/
 ├── hashicorp.yml                      # Standalone: HashiCorp tools only
 ├── terminal_customizations.yml        # Standalone: terminal/font setup only
 ├── vim.yml                            # Standalone: Vim setup only
+├── nvim.yml                           # Standalone: Neovim setup only
 ├── zsh.yml                            # Standalone: Zsh setup only
 ├── googlechrome.yml                   # Standalone: Chromium only
 ├── vscode.yml                         # Standalone: VS Code only
@@ -36,6 +37,7 @@ fedora-dev-machine-setup/
 │   ├── terminal_customizations.yml    # Nerd Fonts version + font list
 │   ├── vscode.yml                     # VS Code extension IDs
 │   ├── vim.yml                        # Vim packages and plugin URLs
+│   ├── nvim.yml                       # Neovim package list
 │   └── zsh.yml                        # Zsh plugin and theme URLs
 └── roles/
     ├── base/
@@ -49,6 +51,21 @@ fedora-dev-machine-setup/
     │   └── tasks/main.yml
     ├── vim/
     │   ├── files/my_configs.vim
+    │   └── tasks/main.yml
+    ├── nvim/
+    │   ├── files/
+    │   │   ├── init.lua                          # entry point
+    │   │   ├── lua/
+    │   │   │   ├── manage.lua                    # custom lightweight plugin manager
+    │   │   │   ├── plugin-list.lua               # list of plugins to install
+    │   │   │   └── config/
+    │   │   │       ├── options.lua               # editor options
+    │   │   │       └── keybinds.lua              # all keymaps (<leader>=Space)
+    │   │   └── after/plugin/
+    │   │       ├── ui.lua                        # colorscheme, lualine, bufferline, alpha, which-key
+    │   │       ├── treesitter.lua                # syntax highlighting / parsing
+    │   │       ├── navigation.lua                # oil.nvim + fzf-lua
+    │   │       └── editing.lua                   # autopairs, autolist, markdown plugins
     │   └── tasks/main.yml
     ├── vscode/tasks/main.yml
     └── zsh/
@@ -170,6 +187,7 @@ All tasks must be idempotent — running the playbook multiple times must not br
 | `hashicorp` | Consul, Packer, Terraform, Vault (Nomad/Vagrant optional via variables) |
 | `terminal_customizations` | Nerd Fonts v3 (zip archives), Tilix terminal, tmux config, tilix dconf settings |
 | `vim` | Vim + vim-enhanced, amix/vimrc distribution + indentLine plugin, custom `my_configs.vim` |
+| `nvim` | Neovim with a custom lightweight plugin manager (`manage.lua`) modelled on [justaguylinux/nvim](https://codeberg.org/justaguylinux/nvim): treesitter, oil.nvim, fzf-lua, lualine, bufferline, which-key, github-dark theme, autopairs, vim-fugitive, markdown-preview |
 | `zsh` | Zsh + Antigen + Oh-My-Zsh plugins + Bullet Train / p10k / Pure themes |
 | `googlechrome` | Chromium (from Fedora dnf repos; no extra repo needed) |
 | `vscode` | VS Code (Microsoft repo, rpm_key + copy-based setup) + 20+ curated extensions |
@@ -185,6 +203,48 @@ Defined in `group_vars/all/all.yml`:
 |----------|------|---------|-------------|
 | `laptop_mode` | bool | `False` | Install TLP and laptop power tools when `True` |
 | `local_username` | string | `$USER` env var | The target user's login name; override with `-e "local_username=$(id -un)"` |
+
+---
+
+## Neovim Configuration
+
+The `nvim` role deploys a self-contained Neovim config to `~/.config/nvim/` modelled on [justaguylinux/nvim](https://codeberg.org/justaguylinux/nvim).
+
+### Plugin manager
+
+A custom lightweight manager lives in `lua/manage.lua`. It clones plugins from GitHub into `~/.local/share/nvim/plugins/` on first launch (no external binary required). User commands:
+
+| Command | Action |
+|---------|--------|
+| `:PlugUpdate` | Pull latest commits for all plugins |
+| `:PlugList` | Show installed plugin directories |
+| `:PlugClean` | Remove plugins no longer in `plugin-list.lua` |
+
+### Adding / removing plugins
+
+Edit `roles/nvim/files/lua/plugin-list.lua` and re-run the playbook. On next Neovim launch the new plugin is cloned automatically. To configure a plugin, add its setup to the appropriate file under `after/plugin/`.
+
+### Keymaps (leader = `Space`)
+
+| Key | Action |
+|-----|--------|
+| `<leader>e` | File explorer (oil.nvim) |
+| `<leader>ff` | Find files (fzf-lua) |
+| `<leader>fg` | Live grep |
+| `<leader>fh` | Help tags |
+| `<leader>fr` | Recent files |
+| `<leader>fc` | Neovim config files |
+| `<leader>gg` | Git status (fugitive) |
+| `<leader>gc` | Git branches |
+| `<leader>pp` | Markdown preview toggle |
+| `<leader>v` / `<leader>s` | Vertical / horizontal split |
+| `<Tab>` / `<S-Tab>` | Next / previous buffer |
+| `<leader>q` | Close buffer |
+| `<leader>m` | Alpha dashboard |
+
+### Config file locations
+
+All source files live in `roles/nvim/files/`. They are overwritten on each playbook run (no `.orig` backup for the nvim role; the whole `~/.config/nvim/` is backed up to `~/.config/nvim.orig/` on first deploy only).
 
 ---
 
